@@ -5,6 +5,11 @@ module Types
     field :name, String, null: true
     field :postal_code, Integer, null: true
     field :users, [Types::UserType], null: true
+    field :user_count, Integer, null: false
+
+    def user_count
+      CountLoader.for(model: Company, association_name: :users).load(object.id)
+    end
 
     def users
       ::AssociationLoader.
