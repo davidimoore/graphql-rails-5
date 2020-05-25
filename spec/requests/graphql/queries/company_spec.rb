@@ -7,7 +7,7 @@ describe "company query" do
         company(id: $id) {
           id
           motto
-        
+          userCount
         	users {
             email
           }
@@ -37,6 +37,7 @@ describe "company query" do
                  {
                    "id" => "#{company.id}",
                    "motto" => "Company-1 does it best",
+                   "userCount" => 2,
                    "users" => [
                      { "email" => "user-0@Company-1.com" },
                      { "email" => "user-1@Company-1.com" }
