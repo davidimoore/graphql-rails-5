@@ -4,12 +4,7 @@ module Types
     field :motto, String, null: true
     field :name, String, null: true
     field :postal_code, Integer, null: true
-    field :users, [Types::UserType], null: true
-    field :user_count, Integer, null: false
-
-    def user_count
-      CountLoader.for(model: Company, association_name: :users).load(object.id)
-    end
+    field :users, Types::UserConnectionType, max_page_size: 2, null: true
 
     def users
       ::AssociationLoader.

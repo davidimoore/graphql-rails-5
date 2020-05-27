@@ -7,44 +7,94 @@ describe "company query" do
         company(id: $id) {
           id
           motto
-          userCount
-        	users {
-            email
+          users {
+            totalCount
+            pageInfo {
+              hasNextPage
+              hasPreviousPage
+              startCursor
+              endCursor
+            }
+            edges {
+              cursor
+              node {
+                id 
+                email
+              }
+            }
           }
         }
       }
     QUERY
   end
 
-  it "returns a company and their users" do
+  let!(:number_of_users) { 10 }
+  let!(:company) { create(:company, name: "Company-1") }
 
-    company = create(:company, name: "Company-1")
-    2.times do |num|
-      company.users.create(email: "user-#{num}@#{company.name}.com")
-    end
+  let!(:users) do
+    number_of_users.times.map { |n| company.users.create(email: "user-#{n}@#{company.name}.com") }
+  end
 
-    headers = {
+  let!(:headers) do
+    {
       "Authorization" => company.users.first.id
     }
+  end
 
+  before do
     post "/graphql", params: { query: query, variables: { id: company.id } }, headers: headers
+  end
 
-    expect(JSON.parse(response.body)).
+  subject { JSON.parse(response.body).dig("data") }
+
+  it "returns data about the company" do
+    company_data = subject.fetch("company")
+
+    expect(company_data.fetch("id")).to eq company.id.to_s
+    expect(company_data.fetch("motto")).to eq "Company-1 does it best"
+  end
+
+  it "returns data about the users connection" do
+    users_connection_data = subject.dig("company", "users")
+
+    expect(users_connection_data.dig("pageInfo")).
+      to eq({
+              "hasNextPage" => true,
+              "hasPreviousPage" => false,
+              "startCursor" => "MQ",
+              "endCursor" => "Mg"
+            })
+
+    expect(users_connection_data.dig("totalCount")).to eq(number_of_users)
+  end
+
+  it "returns data about the users edges" do
+    users_from_db = User.all
+    users_edges_data = subject.dig("company", "users", "edges")
+    first_user = users_edges_data[0]
+    second_user = users_edges_data[1]
+
+    expect(first_user).
       to eq(
            {
-             "data" => {
-               "company" =>
-                 {
-                   "id" => "#{company.id}",
-                   "motto" => "Company-1 does it best",
-                   "userCount" => 2,
-                   "users" => [
-                     { "email" => "user-0@Company-1.com" },
-                     { "email" => "user-1@Company-1.com" }
-                   ]
-                 }
+             "cursor" => "MQ",
+             "node" => {
+               "id" => "#{users_from_db[0].id}",
+               "email" => "#{users_from_db[0].email}"
              }
            }
          )
+
+    expect(second_user).
+      to eq(
+           {
+             "cursor" => "Mg",
+             "node" => {
+               "id" => "#{users_from_db[1].id}",
+               "email" => "#{users_from_db[1].email}"
+             }
+           }
+         )
+
   end
 end
